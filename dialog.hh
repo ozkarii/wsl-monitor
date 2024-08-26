@@ -11,32 +11,29 @@ const unsigned int WSL_TIMEOUT_KILL = 10000;
 const unsigned int WSL_TIMEOUT_LIST = 500;
 const QString APP_NAME = "wsl-monitor";
 
-QT_BEGIN_NAMESPACE
-namespace Ui { class Dialog; }
-QT_END_NAMESPACE
-
-class Dialog : public QDialog
+class Widget : public QWidget
 {
     Q_OBJECT
 
 public:
-    Dialog(QWidget *parent = nullptr);
-    ~Dialog();
+    Widget(QWidget *parent = nullptr);
+    ~Widget();
 
 
 private slots:
-    void on_checkBox_stateChanged(int arg1);
     void iconActivated(QSystemTrayIcon::ActivationReason);
 
 private:
-    Ui::Dialog *ui;
     QIcon appIcon;
     QSystemTrayIcon* trayIcon;
     QMenu* trayMenu;
+    QMenu* prefMenu;
     QList<QAction*> trayActions;
     QAction* quitAction;
+    QAction* prefAction;
     QAction* noDistrosAction;
     QAction* hangingAction;
+    QAction* startupAction;
 
     void killDistro(QString distro);
     bool updateMenu();

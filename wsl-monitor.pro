@@ -15,8 +15,6 @@ SOURCES += \
 HEADERS += \
     dialog.hh
 
-FORMS += \
-    dialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

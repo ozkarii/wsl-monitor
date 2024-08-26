@@ -1,49 +1,49 @@
 #include "dialog.hh"
-#include "ui_dialog.h"
 #include <QDebug>
 #include <QSettings>
 #include <QDir>
+#include <QApplication>
 
-Dialog::Dialog(QWidget *parent)
-    : QDialog(parent)
-    , ui(new Ui::Dialog)
-    , trayIcon(new QSystemTrayIcon(this))
+Widget::Widget(QWidget *parent)
+    : QWidget(parent)
 {
-    ui->setupUi(this);
-    this->setWindowTitle(APP_NAME);
-
     // Tray icon menu
     quitAction = new QAction("&Quit", this);
+    prefAction = new QAction("&Preferences", this);
     noDistrosAction = new QAction("&No distros running!", this);
-    hangingAction = new QAction("&WSL not responding, please wait!", this);
+    hangingAction = new QAction("&WSL not responding, try again!", this);
+    startupAction = new QAction("&Run on startup");
+
+    startupAction->setCheckable(true);
 
     connect(quitAction, &QAction::triggered, qApp, &QCoreApplication::quit);
+    connect(prefAction, &QAction::triggered, this, [this](){this->show();});
+    connect(startupAction, &QAction::triggered, this,
+            [this](){this->setRunAtStartup(this->startupAction->isChecked());});
+
+    trayIcon = new QSystemTrayIcon(this);
 
     trayMenu = new QMenu(this);
-    trayActions = {quitAction, noDistrosAction};
-    trayMenu->addAction(quitAction);
+    trayIcon->setContextMenu(trayMenu);
 
-    this->trayIcon->setContextMenu(trayMenu);
+    prefMenu = new QMenu(this);
+    prefMenu->addAction(startupAction);
+    prefAction->setMenu(prefMenu);
 
     appIcon = QIcon(":/icons/Tux.png");
-    this->trayIcon->setIcon(appIcon);
-    this->setWindowIcon(appIcon);
+    trayIcon->setIcon(appIcon);
+    trayIcon->show();
 
-    // Displaying the tray icon
-    this->trayIcon->show();
-
-    // Interaction
-    connect(trayIcon, &QSystemTrayIcon::activated, this, &Dialog::iconActivated);
+    connect(trayIcon, &QSystemTrayIcon::activated, this, &Widget::iconActivated);
 
     this->hide();
 }
 
-Dialog::~Dialog()
+Widget::~Widget()
 {
-    delete ui;
 }
 
-void Dialog::killDistro(QString distro)
+void Widget::killDistro(QString distro)
 {
     QProcess wslProcess;
     wslProcess.startCommand("wsl.exe --terminate " + distro);
@@ -68,7 +68,7 @@ void Dialog::killDistro(QString distro)
 
 }
 
-bool Dialog::updateMenu()
+bool Widget::updateMenu()
 {
     trayMenu->clear();
 
@@ -76,11 +76,13 @@ bool Dialog::updateMenu()
     wslProcess.startCommand("wsl.exe --list --running");
     if (not wslProcess.waitForFinished(WSL_TIMEOUT_LIST)) {
         trayMenu->addAction(hangingAction);
+        trayMenu->addAction(prefAction);
         trayMenu->addAction(quitAction);
         return false;
     }
     else if (wslProcess.exitCode() < 0) {
         trayMenu->addAction(noDistrosAction);
+        trayMenu->addAction(prefAction);
         trayMenu->addAction(quitAction);
         return false;
     }
@@ -106,21 +108,27 @@ bool Dialog::updateMenu()
 
         QAction* newAction = new QAction("&Kill " + distroName, trayMenu);
 
-        connect(newAction, &QAction::triggered, this, [this, distroName](){killDistro(distroName);});
+        connect(newAction, &QAction::triggered, this,
+                [this, distroName](){killDistro(distroName);});
         trayMenu->addAction(newAction);
     }
 
+    trayMenu->addAction(prefAction);
     trayMenu->addAction(quitAction);
 
     return true;
 }
 
-void Dialog::setRunAtStartup(bool setting)
+void Widget::setRunAtStartup(bool setting)
 {
-    QSettings settings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
+    QSettings settings(
+        "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        QSettings::NativeFormat
+    );
     if (setting) {
-        settings.setValue(APP_NAME, QDir::toNativeSeparators(QCoreApplication::applicationFilePath()));
-        qDebug() << APP_NAME + QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
+        settings.setValue(
+            APP_NAME, QDir::toNativeSeparators(QCoreApplication::applicationFilePath())
+        );
     }
     else {
         settings.remove(APP_NAME);
@@ -128,7 +136,7 @@ void Dialog::setRunAtStartup(bool setting)
 }
 
 
-void Dialog::iconActivated(QSystemTrayIcon::ActivationReason reason_)
+void Widget::iconActivated(QSystemTrayIcon::ActivationReason reason_)
 {
     switch (reason_)
     {
@@ -139,11 +147,5 @@ void Dialog::iconActivated(QSystemTrayIcon::ActivationReason reason_)
         default:
             break;
     }
-}
-
-
-void Dialog::on_checkBox_stateChanged(int arg1)
-{
-    setRunAtStartup((bool)arg1);
 }
 
