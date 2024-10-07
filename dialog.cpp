@@ -13,6 +13,8 @@ Widget::Widget(QWidget *parent)
     noDistrosAction = new QAction("&No distros running!", this);
     hangingAction = new QAction("&WSL not responding, try again!", this);
     startupAction = new QAction("&Run on startup");
+    shutdownAction = new QAction("&Shutdown WSL");
+
 
     startupAction->setCheckable(true);
 
@@ -20,6 +22,7 @@ Widget::Widget(QWidget *parent)
     connect(prefAction, &QAction::triggered, this, [this](){this->show();});
     connect(startupAction, &QAction::triggered, this,
             [this](){this->setRunAtStartup(this->startupAction->isChecked());});
+    connect(shutdownAction, &QAction::triggered, this, &Widget::shutdownWsl);
 
     trayIcon = new QSystemTrayIcon(this);
 
@@ -41,6 +44,11 @@ Widget::Widget(QWidget *parent)
 
 Widget::~Widget()
 {
+    delete quitAction;
+    delete prefAction;
+    delete noDistrosAction;
+    delete hangingAction;
+    delete startupAction;
 }
 
 void Widget::killDistro(QString distro)
@@ -76,12 +84,14 @@ bool Widget::updateMenu()
     wslProcess.startCommand("wsl.exe --list --running");
     if (not wslProcess.waitForFinished(WSL_TIMEOUT_LIST)) {
         trayMenu->addAction(hangingAction);
+        trayMenu->addAction(shutdownAction);
         trayMenu->addAction(prefAction);
         trayMenu->addAction(quitAction);
         return false;
     }
     else if (wslProcess.exitCode() < 0) {
         trayMenu->addAction(noDistrosAction);
+        trayMenu->addAction(shutdownAction);
         trayMenu->addAction(prefAction);
         trayMenu->addAction(quitAction);
         return false;
@@ -112,7 +122,7 @@ bool Widget::updateMenu()
                 [this, distroName](){killDistro(distroName);});
         trayMenu->addAction(newAction);
     }
-
+    trayMenu->addAction(shutdownAction);
     trayMenu->addAction(prefAction);
     trayMenu->addAction(quitAction);
 
@@ -133,6 +143,14 @@ void Widget::setRunAtStartup(bool setting)
     else {
         settings.remove(APP_NAME);
     }
+}
+
+void Widget::shutdownWsl()
+{
+    QProcess wslProcess;
+    wslProcess.startCommand("wsl.exe --shutdown");
+    wslProcess.waitForFinished(WSL_TIMEOUT_SHUTDOWN);
+    trayMenu->hide();
 }
 
 

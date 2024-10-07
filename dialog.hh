@@ -8,6 +8,7 @@
 
 // Maximum time to wait for wsl command to respond in ms
 const unsigned int WSL_TIMEOUT_KILL = 10000;
+const unsigned int WSL_TIMEOUT_SHUTDOWN = 10000;
 const unsigned int WSL_TIMEOUT_LIST = 500;
 const QString APP_NAME = "wsl-monitor";
 
@@ -34,11 +35,12 @@ private:
     QAction* noDistrosAction;
     QAction* hangingAction;
     QAction* startupAction;
+    QAction* shutdownAction;
 
     void killDistro(QString distro);
     bool updateMenu();
     void setRunAtStartup(bool setting);
-
+    void shutdownWsl();
 
 };
 #endif // DIALOG_HH
